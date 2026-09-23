@@ -8,7 +8,7 @@ WIDTH, HEIGHT = 1900, 1000
 
 PLAYER_WIDTH = 100
 PLAYER_HEIGHT = 100
-PLAYER_VEL = 5
+PLAYER_VEL = 2
 
 FONT = pygame.font.SysFont("comicsans", 30)
 BIG_FONT = pygame.font.SysFont("comicsans", 60)
@@ -37,11 +37,46 @@ menu_background = safe_load("menu_background.jpg", (WIDTH, HEIGHT), (20, 20, 35)
 player_img = safe_load("player.png", (PLAYER_WIDTH, PLAYER_HEIGHT))
 pro_img = safe_load("bullet.png", (PRO_WIDTH, PRO_HEIGHT))
 
-# --- Settings that persist between menu visits ---
+SETTINGS_FILE = "settings.txt"
+
+# --- Settings that persist between menu visits (and between runs, via settings.txt) ---
 settings = {
     "fall_speed": 3,     # PRO_VEL
     "survive_time": 30,  # seconds, chosen on Play screen (default)
 }
+
+
+def load_settings():
+    """Read settings.txt if it exists and update the settings dict with any values found."""
+    try:
+        with open(SETTINGS_FILE, "r") as f:
+            for line in f:
+                line = line.strip()
+                if not line or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip()
+                if key in settings:
+                    try:
+                        settings[key] = int(value)
+                    except ValueError:
+                        pass
+    except FileNotFoundError:
+        pass  # No saved settings yet, just use the defaults above
+
+
+def save_settings():
+    """Write the current settings dict to settings.txt."""
+    try:
+        with open(SETTINGS_FILE, "w") as f:
+            for key, value in settings.items():
+                f.write(f"{key}={value}\n")
+    except OSError:
+        pass  # If we can't write for some reason, just keep going in-memory
+
+
+load_settings()
 
 
 class Button:
@@ -131,8 +166,10 @@ def settings_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if minus_btn.is_clicked(event.pos):
                     settings["fall_speed"] = max(1, settings["fall_speed"] - 1)
+                    save_settings()
                 if plus_btn.is_clicked(event.pos):
                     settings["fall_speed"] = min(15, settings["fall_speed"] + 1)
+                    save_settings()
                 if back_btn.is_clicked(event.pos):
                     return "menu"
 
@@ -168,8 +205,10 @@ def choose_time_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if minus_btn.is_clicked(event.pos):
                     settings["survive_time"] = max(5, settings["survive_time"] - 5)
+                    save_settings()
                 if plus_btn.is_clicked(event.pos):
                     settings["survive_time"] = settings["survive_time"] + 5
+                    save_settings()
                 if start_btn.is_clicked(event.pos):
                     return "play"
                 if back_btn.is_clicked(event.pos):

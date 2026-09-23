@@ -1,0 +1,2 @@
+fall_speed=1
+survive_time=30
