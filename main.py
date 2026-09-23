@@ -1,6 +1,8 @@
 import pygame
 import time
 import random
+import sys
+import os
 
 pygame.font.init()
 
@@ -8,7 +10,7 @@ WIDTH, HEIGHT = 1900, 1000
 
 PLAYER_WIDTH = 100
 PLAYER_HEIGHT = 100
-PLAYER_VEL = 2
+PLAYER_VEL = 5
 
 FONT = pygame.font.SysFont("comicsans", 30)
 BIG_FONT = pygame.font.SysFont("comicsans", 60)
@@ -21,23 +23,53 @@ WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("karapuz")
 
 # --- Load images, with safe fallbacks so the menu still works if a file is missing ---
+def resource_path(filename):
+    """Get the correct path to an asset, whether running as a plain script
+    or as a PyInstaller-built exe (where bundled files land in a temp folder)."""
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, filename)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+
+
 def safe_load(path, size=None, fallback_color=(40, 40, 60)):
     try:
-        img = pygame.image.load(path)
+        full_path = resource_path(path)
+        img = pygame.image.load(full_path)
         if size:
             img = pygame.transform.scale(img, size)
         return img
-    except Exception:
+    except Exception as e:
+        log_error(f"Failed to load '{path}' (tried: {resource_path(path)}): {e}")
         surf = pygame.Surface(size if size else (WIDTH, HEIGHT))
         surf.fill(fallback_color)
         return surf
+
+
+def log_error(message):
+    """Write errors to a log file next to the exe, since --windowed hides the console."""
+    try:
+        log_path = os.path.join(os.path.dirname(settings_file_path()), "error_log.txt")
+        with open(log_path, "a") as f:
+            f.write(message + "\n")
+    except Exception:
+        pass
 
 background = safe_load("background.jpg", (WIDTH, HEIGHT), (30, 30, 40))
 menu_background = safe_load("menu_background.jpg", (WIDTH, HEIGHT), (20, 20, 35))
 player_img = safe_load("player.png", (PLAYER_WIDTH, PLAYER_HEIGHT))
 pro_img = safe_load("bullet.png", (PRO_WIDTH, PRO_HEIGHT))
 
-SETTINGS_FILE = "settings.txt"
+def settings_file_path():
+    """Settings should live next to the exe/script itself (not in PyInstaller's
+    temp bundle folder), so they actually persist between runs."""
+    if getattr(sys, "frozen", False):
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_dir, "settings.txt")
+
+
+SETTINGS_FILE = settings_file_path()
 
 # --- Settings that persist between menu visits (and between runs, via settings.txt) ---
 settings = {
